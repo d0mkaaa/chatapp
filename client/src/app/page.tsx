@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import Cookies from 'js-cookie';
-import { Send, LogOut, Copy, Trash, MessageSquare } from 'lucide-react';
+import { Send, LogOut, Copy, Trash, MessageSquare, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ContextMenu,
@@ -27,6 +27,11 @@ interface Message {
   content: string;
   sender: string;
   createdAt: string;
+  replyTo?: {
+    _id: string;
+    content: string;
+    sender: string;
+  } | null;
 }
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, '');
@@ -42,6 +47,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [socket, setSocket] = useState<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
   useEffect(() => {
     const initSocket = async () => {
@@ -253,6 +259,20 @@ export default function Home() {
                             : 'bg-muted'
                         } px-6 py-3 rounded-lg shadow-sm`}
                       >
+                        {message.replyTo && (
+                          <div className={`mb-2 p-2 rounded-md text-sm ${
+                            message.sender === username 
+                              ? 'bg-primary-foreground/10 text-primary-foreground/80' 
+                              : 'bg-background/10 text-foreground/80'
+                          }`}>
+                            <div className="flex items-center gap-2">
+                              <MessageSquare size={12} />
+                              <span className="font-medium">{message.replyTo.sender}</span>
+                            </div>
+                            <p className="mt-1 line-clamp-2">{message.replyTo.content}</p>
+                          </div>
+                        )}
+                        
                         <div className="flex flex-col gap-2">
                           <div className="flex justify-between items-center border-b border-opacity-10 pb-2">
                             <span className="font-medium text-sm">
@@ -285,11 +305,11 @@ export default function Home() {
                       </ContextMenuItem>
                       
                       <ContextMenuItem
-                        onClick={() => navigator.clipboard.writeText(message._id)}
+                        onClick={() => setReplyingTo(message)}
                         className="flex items-center gap-2 cursor-pointer"
                       >
                         <MessageSquare size={16} />
-                        Copy Message ID
+                        Reply
                       </ContextMenuItem>
 
                       <ContextMenuSeparator />
@@ -316,21 +336,44 @@ export default function Home() {
 
         <motion.form 
           onSubmit={handleSubmit} 
-          className="flex gap-2"
+          className="flex flex-col gap-2"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
         >
-          <Input
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1"
-          />
-          <Button type="submit" className="flex items-center gap-2">
-            <Send size={18} />
-            Send
-          </Button>
+          {replyingTo && (
+            <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <MessageSquare size={14} />
+                  <span className="text-sm font-medium">Reply to {replyingTo.sender}</span>
+                </div>
+                <p className="text-sm text-muted-foreground line-clamp-1 mt-1">
+                  {replyingTo.content}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setReplyingTo(null)}
+              >
+                <X size={14} />
+              </Button>
+            </div>
+          )}
+          
+          <div className="flex gap-2">
+            <Input
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Type your message..."
+              className="flex-1"
+            />
+            <Button type="submit" className="flex items-center gap-2">
+              <Send size={18} />
+              Send
+            </Button>
+          </div>
         </motion.form>
       </div>
     </div>

@@ -11,7 +11,7 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
     origin: process.env.FRONTEND_URL || "*",
-    methods: ["GET", "POST"]
+    methods: ["GET", "POST", "DELETE"]
   }
 });
 
@@ -22,6 +22,31 @@ app.use(cors({
 }));
 app.use(express.json());
 
+app.get('/', (req, res) => {
+  res.json({ status: 'Server is running' });
+});
+
+app.get('/messages', (req, res) => {
+  try {
+    res.json(messages);
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ error: 'Error fetching messages' });
+  }
+});
+
+app.delete('/messages/:id', (req, res) => {
+  try {
+    const messageId = req.params.id;
+    messages = messages.filter(msg => msg._id !== messageId);
+    io.emit('messageDeleted', messageId);
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Error deleting message:', error);
+    res.status(500).json({ error: 'Error deleting message' });
+  }
+});
+
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
@@ -31,7 +56,8 @@ io.on('connection', (socket) => {
         _id: Date.now().toString(),
         content: message.content,
         sender: message.sender,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        replyTo: message.replyTo
       };
       messages.push(newMessage);
       
@@ -41,32 +67,13 @@ io.on('connection', (socket) => {
       
       io.emit('message', newMessage);
     } catch (error) {
-      console.error('Error saving message:', error);
+      console.error('Error handling message:', error);
     }
   });
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
-});
-
-app.get('/messages', async (req, res) => {
-  try {
-    res.json([...messages].reverse());
-  } catch (error) {
-    res.status(500).json({ error: 'Error fetching messages' });
-  }
-});
-
-app.delete('/messages/:id', async (req, res) => {
-  try {
-    const messageId = req.params.id;
-    messages = messages.filter(msg => msg._id !== messageId);
-    io.emit('messageDeleted', messageId);
-    res.status(200).send({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'Error deleting message' });
-  }
 });
 
 const PORT = process.env.PORT || 3000;
