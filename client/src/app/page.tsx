@@ -29,7 +29,10 @@ interface Message {
   createdAt: string;
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, '') || 'http://localhost:3000';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, '');
+if (!BACKEND_URL) {
+  console.error('NEXT_PUBLIC_BACKEND_URL is not defined');
+}
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
