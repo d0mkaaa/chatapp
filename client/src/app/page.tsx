@@ -110,16 +110,20 @@ export default function Home() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newMessage.trim() && socket) {
-      const messageData = {
+      socket.emit('message', {
         content: newMessage,
         sender: username,
-      };
-      
-      socket.emit('message', messageData);
+        replyTo: replyingTo ? {
+          _id: replyingTo._id,
+          content: replyingTo.content,
+          sender: replyingTo.sender
+        } : null
+      });
       setNewMessage('');
+      setReplyingTo(null);
     }
   };
 
